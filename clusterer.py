@@ -49,8 +49,7 @@ class Clusterer(BaseEstimator):
                 dlayer = hits_layer[sort][1:] - hits_layer[sort][:-1]
                 use = dlayer == 1
                 hits_layer_end = hits_layer[sort][:-1][use]
-                dphi = np.abs(hits_phi[sort][1:] - hits_phi[sort][:-1])
-                dphi = np.minimum(dphi[use], 2. * np.pi - dphi[use])
+                dphi = self.abs_phi_dist(hits_phi[sort][1:], hits_phi[sort][:-1])[use]
                 dphi_bin = np.round(dphi / self.dphiRange * self.weights.shape[1])
                 in_range = dphi_bin < self.weights.shape[1]
                 self.weights[hits_layer_end[in_range].astype('int'), dphi_bin[in_range].astype('int')] += 1
@@ -94,8 +93,7 @@ class Clusterer(BaseEstimator):
     @staticmethod
     #@np.vectorize
     def get_weight(phi_1, phi_2, dphiRange, weights):
-        dphi = np.abs(phi_1 - phi_2)
-        dphi = np.minimum(dphi, 2. * np.pi - dphi)
+        dphi = Clusterer.abs_phi_dist(phi_1, phi_2)
         dphi_bin = np.round(dphi / dphiRange * len(weights))
         in_range = dphi_bin < len(weights)
         w = -np.ones(len(phi_2))
@@ -139,9 +137,7 @@ class Clusterer(BaseEstimator):
     @staticmethod
     def abs_phi_dist(phi_1, phi_2):
         dphi = abs(phi_1 - phi_2)
-
-        if dphi > np.pi:
-            dphi = 2 * np.pi - dphi
+        dphi = (dphi > np.pi) * (2 * np.pi - dphi) + (dphi <= np.pi) * dphi
 
         return dphi
 
