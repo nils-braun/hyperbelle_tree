@@ -27,7 +27,7 @@ class Clusterer(BaseEstimator):
     @staticmethod
     @np.vectorize
     def get_weight(hit_1, hit_2):
-        return -abs(hit_1 - hit_2)
+        return -Clusterer.abs_phi_dist(hit_1, hit_2)
 
     def get_quality(self, track):
         return 1
@@ -60,6 +60,15 @@ class Clusterer(BaseEstimator):
                                              track + [int(possible_next_hit[number_id])],
                                              X_event):
                 yield track_candidate
+
+    @staticmethod
+    def abs_phi_dist(phi_1, phi_2):
+        dphi = abs(phi_1 - phi_2)
+
+        if dphi > np.pi:
+            dphi = 2 * np.pi - dphi
+
+        return dphi
 
     def extrapolate(self, track_list, X_event):
         unfinished_tracks_end = defaultdict(list)
