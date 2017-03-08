@@ -57,7 +57,8 @@ class Clusterer(BaseEstimator):
             #self.weights[layer] /= np.sum(self.weights[layer])
             self.weights[layer] /= np.max(self.weights[layer])
 
-    def fit_track(self, track_list, X_event):
+    @staticmethod
+    def fit_track(track_list, X_event):
 
         if len(track_list) < 3:
             return 0, 0, 0
@@ -91,7 +92,13 @@ class Clusterer(BaseEstimator):
         return R_2, phi_2, residu_2
 
     @staticmethod
-    #@np.vectorize
+    def abs_phi_dist(phi_1, phi_2):
+        dphi = abs(phi_1 - phi_2)
+        dphi = (dphi > np.pi) * (2 * np.pi - dphi) + (dphi <= np.pi) * dphi
+
+        return dphi
+
+    @staticmethod
     def get_weight(phi_1, phi_2, dphiRange, weights):
         dphi = Clusterer.abs_phi_dist(phi_1, phi_2)
         dphi_bin = np.round(dphi / dphiRange * len(weights))
@@ -134,13 +141,6 @@ class Clusterer(BaseEstimator):
                                              X_event):
                 yield track_candidate
 
-    @staticmethod
-    def abs_phi_dist(phi_1, phi_2):
-        dphi = abs(phi_1 - phi_2)
-        dphi = (dphi > np.pi) * (2 * np.pi - dphi) + (dphi <= np.pi) * dphi
-
-        return dphi
-
     def extrapolate(self, track_list, X_event):
         unfinished_tracks_end = defaultdict(list)
         unfinished_tracks_begin = defaultdict(list)
@@ -159,13 +159,15 @@ class Clusterer(BaseEstimator):
                 unfinished_tracks_begin[first_layer].append(track)
 
         for last_layer, unfinished_tracks in unfinished_tracks_end.items():
-            if len(unfinished_tracks) == 1:
-                unfinished_track = unfinished_tracks[0]
+            for unfinished_track in unfinished_tracks:
                 other_unfinished_tracks = unfinished_tracks_begin[last_layer + 2]
 
-                if len(other_unfinished_tracks) == 1:
-                    other_unfinished_track = other_unfinished_tracks[0]
-                    unfinished_track += other_unfinished_track
+                if len(other_unfinished_tracks) == 0:
+                    continue
+                best_unfinished_track = max(other_unfinished_tracks, key=lambda track: self.get_quality(unfinished_track + track, X_event))
+                unfinished_track += best_unfinished_track
+
+                del other_unfinished_tracks[other_unfinished_tracks.index(best_unfinished_track)]
 
     def predict_single_event(self, X_event):
         # Attention! We are redefining the iphi column here, as we do not need it
