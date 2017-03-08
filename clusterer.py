@@ -12,14 +12,7 @@ number_id = 4
 
 
 class Clusterer(BaseEstimator):
-    def __init__(self, cut=-0.1, duplicate_cut=1):
-        """
-        Track Pattern Recognition based on the connections between two nearest hits from two nearest detector layers.
-        Parameters
-        ----------
-        min_cos_value : float
-            Minimum cos value between two nearest segments of the track.
-        """
+    def __init__(self, cut=-0.1, duplicate_cut=0.05):
         self.cut = cut
         self.duplicate_cut = duplicate_cut
 
@@ -34,7 +27,6 @@ class Clusterer(BaseEstimator):
     @staticmethod
     @np.vectorize
     def get_weight(hit_1, hit_2):
-        #return hit_1.cluster_id == hit_2.cluster_id
         return -abs(hit_1 - hit_2)
 
     def get_quality(self, track):
@@ -47,7 +39,6 @@ class Clusterer(BaseEstimator):
             return
 
         unused_hits_on_next_layer_mask = self.hit_masks_grouped_by_layer[hit[layer_id] - 1] & self.not_used_mask
-
         unused_hits_on_next_layer = X_event[unused_hits_on_next_layer_mask]
 
         if np.all(~unused_hits_on_next_layer_mask):
@@ -62,13 +53,39 @@ class Clusterer(BaseEstimator):
             yield track
             return
 
-        possible_next_hits_mask = weights == maximal_weight
+        possible_next_hits_mask = maximal_weight == weights  # < self.duplicate_cut
 
         for possible_next_hit in unused_hits_on_next_layer[possible_next_hits_mask]:
             for track_candidate in self.walk(possible_next_hit,
                                              track + [int(possible_next_hit[number_id])],
-                                             X_event,):
+                                             X_event):
                 yield track_candidate
+
+    def extrapolate(self, track_list, X_event):
+        unfinished_tracks_end = defaultdict(list)
+        unfinished_tracks_begin = defaultdict(list)
+
+        for track in track_list:
+            if len(track) == len(self.layers):
+                continue
+
+            hits_of_track = X_event[track]
+            last_layer = max(hits_of_track[:, layer_id])
+            first_layer = min(hits_of_track[:, layer_id])
+
+            if last_layer != len(self.layers) - 1:
+                unfinished_tracks_end[last_layer].append(track)
+            elif first_layer != 0:
+                unfinished_tracks_begin[first_layer].append(track)
+
+        for last_layer, unfinished_tracks in unfinished_tracks_end.items():
+            if len(unfinished_tracks) == 1:
+                unfinished_track = unfinished_tracks[0]
+                other_unfinished_tracks = unfinished_tracks_begin[last_layer + 2]
+
+                if len(other_unfinished_tracks) == 1:
+                    other_unfinished_track = other_unfinished_tracks[0]
+                    unfinished_track += other_unfinished_track
 
     def predict_single_event(self, X_event):
         # Attention! We are redefining the iphi column here, as we do not need it
@@ -84,7 +101,7 @@ class Clusterer(BaseEstimator):
         self.not_used_mask = np.ones(len(X_event)).astype("bool")
         labels = -1 * np.ones(len(X_event))
 
-        track_counter = 0
+        track_list = []
 
         for layer in reversed(self.layers):
             while True:
@@ -95,15 +112,18 @@ class Clusterer(BaseEstimator):
 
                 start_hit = X_event[unused_mask_in_this_layer][0]
 
-                track_list = list(self.walk(start_hit, [int(start_hit[number_id])], X_event))
+                found_track_list = list(self.walk(start_hit, [int(start_hit[number_id])], X_event))
 
-                best_track = max(track_list, key=lambda track: self.get_quality(track))
+                best_track = max(found_track_list, key=lambda track: self.get_quality(track))
 
                 # Store best track
                 self.not_used_mask[best_track] = False
-                labels[best_track] = track_counter
 
-                track_counter += 1
+                track_list.append(best_track)
+
+        self.extrapolate(track_list, X_event)
+
+        for i, track in enumerate(track_list):
+            labels[track] = i
 
         return labels
-
