@@ -10,16 +10,10 @@ x_id = 2
 y_id = 3
 number_id = 4
 
+# SORRY! All comments are still missing...
 
 class Clusterer(BaseEstimator):
-    def __init__(self, cut=0.0001, duplicate_cut=0.15):
-        """
-        Track Pattern Recognition based on the connections between two nearest hits from two nearest detector layers.
-        Parameters
-        ----------
-        min_cos_value : float
-            Minimum cos value between two nearest segments of the track.
-        """
+    def __init__(self, cut=0.0001, duplicate_cut=0.1):
         self.cut = cut
         self.duplicate_cut = duplicate_cut
 
@@ -70,11 +64,9 @@ class Clusterer(BaseEstimator):
         y_m = np.mean(y_values)
 
         def calc_R(xc, yc):
-            """ calculate the distance of each 2D points from the center (xc, yc) """
             return np.sqrt((x_values - xc) ** 2 + (y_values - yc) ** 2)
 
         def f_2(c):
-            """ calculate the algebraic distance between the data points and the mean circle centered at c=(xc, yc) """
             Ri = calc_R(*c)
             return Ri - Ri.mean()
 
