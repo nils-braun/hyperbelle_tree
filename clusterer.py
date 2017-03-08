@@ -12,7 +12,7 @@ number_id = 4
 
 
 class Clusterer(BaseEstimator):
-    def __init__(self, cut=0.0001, duplicate_cut=0.005):
+    def __init__(self, cut=0.0001, duplicate_cut=0.1):
         """
         Track Pattern Recognition based on the connections between two nearest hits from two nearest detector layers.
         Parameters
