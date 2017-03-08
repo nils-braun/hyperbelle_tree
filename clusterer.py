@@ -12,7 +12,7 @@ number_id = 4
 
 
 class Clusterer(BaseEstimator):
-    def __init__(self, cut=-0.1, duplicate_cut=1):
+    def __init__(self, cut=0.0001, duplicate_cut=1):
         """
         Track Pattern Recognition based on the connections between two nearest hits from two nearest detector layers.
         Parameters
@@ -27,15 +27,49 @@ class Clusterer(BaseEstimator):
 
         self.hit_masks_grouped_by_layer = {}
         self.not_used_mask = None
+        
+        self.weights = np.zeros((8, 100))
+        self.dphiRange = 0.1
 
     def fit(self, X, y):
-        pass
+        events = y[:, 0]
+        for event in np.unique(events):
+            event_indices = events == event
+            X_event = X[event_indices]
+            pixelx = X_event[:, 3]
+            pixely = X_event[:, 4]
+            phi = np.arctan2(pixely, pixelx)
+            layer = X_event[:, 1]
+            particles = y[event_indices][:, 1]
+            for particle in np.unique(particles):
+                hits_particle = particles == particle
+                hits_layer = layer[hits_particle]
+                hits_phi = phi[hits_particle]
+                sort = np.argsort(hits_layer)
+                dlayer = hits_layer[sort][1:] - hits_layer[sort][:-1]
+                use = dlayer == 1
+                hits_layer_end = hits_layer[sort][:-1][use]
+                dphi = np.abs(hits_phi[sort][1:] - hits_phi[sort][:-1])
+                dphi = np.minimum(dphi[use], 2. * np.pi - dphi[use])
+                dphi_bin = np.round(dphi / self.dphiRange * self.weights.shape[1])
+                in_range = dphi_bin < self.weights.shape[1]
+                self.weights[hits_layer_end[in_range].astype('int'), dphi_bin[in_range].astype('int')] += 1
+        for layer in range(self.weights.shape[0]):
+            #self.weights[layer] /= np.sum(self.weights[layer])
+            self.weights[layer] /= np.max(self.weights[layer])
 
     @staticmethod
-    @np.vectorize
-    def get_weight(hit_1, hit_2):
+    #@np.vectorize
+    def get_weight(phi_1, phi_2, dphiRange, weights):
         #return hit_1.cluster_id == hit_2.cluster_id
-        return -abs(hit_1 - hit_2)
+        #return -abs(hit_1 - hit_2)
+        dphi = np.abs(phi_1 - phi_2)
+        dphi = np.minimum(dphi, 2. * np.pi - dphi)
+        dphi_bin = np.round(dphi / dphiRange * len(weights))
+        in_range = dphi_bin < len(weights)
+        w = -np.ones(len(phi_2))
+        w[in_range] = weights[dphi_bin[in_range].astype('int')]
+        return w
 
     def get_quality(self, track):
         return 1
@@ -54,7 +88,7 @@ class Clusterer(BaseEstimator):
             yield track
             return
 
-        weights = self.get_weight(hit[phi_id], unused_hits_on_next_layer[:, phi_id])
+        weights = self.get_weight(hit[phi_id], unused_hits_on_next_layer[:, phi_id], self.dphiRange, self.weights[int(hit[layer_id] - 1)])
 
         maximal_weight = np.max(weights)
 
