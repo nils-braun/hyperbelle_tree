@@ -12,7 +12,7 @@ number_id = 4
 
 
 class Clusterer(BaseEstimator):
-    def __init__(self, cut=0.0001, duplicate_cut=0.1):
+    def __init__(self, cut=0.0001, duplicate_cut=0.15):
         """
         Track Pattern Recognition based on the connections between two nearest hits from two nearest detector layers.
         Parameters
@@ -28,7 +28,7 @@ class Clusterer(BaseEstimator):
         self.hit_masks_grouped_by_layer = {}
         self.not_used_mask = None
         
-        self.weights = np.zeros((8, 100))
+        self.weights = np.zeros((8, 50))
         self.dphiRange = 0.1
 
     def fit(self, X, y):
@@ -94,8 +94,6 @@ class Clusterer(BaseEstimator):
     @staticmethod
     #@np.vectorize
     def get_weight(phi_1, phi_2, dphiRange, weights):
-        #return hit_1.cluster_id == hit_2.cluster_id
-        #return -abs(hit_1 - hit_2)
         dphi = np.abs(phi_1 - phi_2)
         dphi = np.minimum(dphi, 2. * np.pi - dphi)
         dphi_bin = np.round(dphi / dphiRange * len(weights))
