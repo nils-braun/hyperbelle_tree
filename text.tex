@@ -1,0 +1,13 @@
+* standard tracking algorithm: simplified Monte Carlo Search Tree
+* quite similar to CKF, but without update step
+
+* span tree from given seed hit. all unused hits (from outer to inner) are start hits.
+  * give a weight to all hits in the next layer
+  * build a track with hit with maximum weight + hits "neighboring"
+  * weight could be anything (e.g. BDT?), but we used phi distance seperatly for each layer (PDF of this variable was recorded on training sample)
+
+* use "best track" (quality = residuum of circle fit)
+* extrapolate in the end: add track stubs/single hits with hit inefficiencies based on residuum)
+
+* fast: use numpy arrays, less loops, preprocess IDs, layers etc.
+
