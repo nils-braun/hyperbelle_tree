@@ -1,25 +1,27 @@
 % Summary of algorithm, introduction
-One contribution was a typical tracking algorithm used in high energy physics, e.g. in the software currently written for the Belle II experiment. 
+One contribution was inspired by a typical tracking algorithm used in high energy physics, e.g. in the software currently developed for the Belle II experiment. 
 The implemented code is similar to a combinatoric Kalman filter and loosely based on the principles of a Monte Carlo search tree. 
-For the sake of simplicity in this challenge, the update step of the Kalman filter (which, in real-world applications defines how well the algorithm works) was not implemented.
+To keep the implementation simple, the update step of the Kalman filter which, in real-world applications defines how well the algorithm works, was not implemented.
 
 % steps of the algorithm
 % tree search
-The algorithm starts with a random hit on the outermost layer and builds up a tree using the hits on the next layer. A weight is calculated for each hit, which will be discussed below. Using only the hit with the maximal weight and those, which have a weight near to the maximal one, a new track candidate is built and the procedure is repeated until the innermost layer is processed. 
+The algorithm starts with a random hit on the outermost layer and builds up a tree using the hits on the next layer. 
+A weight is calculated for each hit, which will be discussed below. 
+Using only the hit with the maximal weight and those, which have a weight near to the maximal one, a new track candidate is built and the procedure is repeated until the innermost layer is processed. 
 
 % Weight calculation
 The weight calculation is the crucial part in this algorithm. 
-In this example implementation, the angle difference in the xy-plane phi between two succcessive hits is sampled on training data, where the truth information is known. 
-From this PDF, a probability for a given phi difference is extrated which can be used as a weight. However, in more complex applications, more advanced techniques such as multivariate methods (e.g. boosted decision trees or deep learning) can be applied.
+In this example implementation, the angle difference in the xy-plane phi between two successive hits is sampled on training data, where the truth information is known. 
+From this histogrammed data, a probability for a given phi difference is extrated and used as a weight. However, in more complex applications, more advanced techniques such as multivariate methods (e.g. boosted decision trees or deep learning) can be applied.
 
 % Final selection
-The tree search may produce multiple track candidate starting with the same seed hit, so only the single best candidate according to a circular fit is stored.
+The tree search may produce multiple track candidates starting with the same seed hit, so only the single best candidate according to a circular fit is stored.
 
-As there are no background hits, the tree search is continued until all hits of the event are used.
+As there are no background hits, the tree search is continued until all hits of the event are assigned.
 
 % extrapolation
 To cope with hit inefficiencies, tracks which do not include hits of all layers are fitted together pairwise and tested for their fit quality. Good combinations are merged together.
 
 % final words
-As one part of the challenge was also to write fast algorithms, the implementation was tuned afterwards. 
-Caching for the hits on each layer was implemented and heavy calculations and loops were performed using \texttt{numpy} functionality.
+As one part of the challenge was also to write fast algorithms, a runtime optimization of the implementation was performed. 
+Caching for the hits on each layer was implemented and heavy calculations and loops were realized using \texttt{numpy} functionality.
